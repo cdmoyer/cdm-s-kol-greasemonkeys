@@ -8,7 +8,7 @@
 // @namespace      http://hogsofdestiny.com/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.4 - Tabbed Chat Interface for KoL
+// @description    Version 0.5 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -44,6 +44,9 @@ TODO:
 /*************************** Change Log ***************************
 
 Latest Update:
+0.5:    Added /option alltab
+0.4.5:  More PM issues, apparently sometimes PMs have no class (duh)
+0.4.4:  Added /option greentoactive
 0.4.3:  Added /clearall and /clsa
 0.4.2:  Fixed UpUp tagged player's PMs
 0.4.1:  Fixed key-bound movement between tabs with closed tabs
@@ -74,7 +77,9 @@ var CTC_HELP = 	"CDMoyer's Tabbed KoL Chat\n\nClick on the stuff at the top to c
 
 
 var CTC_OPTIONS = new Object;
+CTC_OPTIONS['alltab'] = 'Include the almighty All tab, with all messages as one';
 CTC_OPTIONS['debug'] = 'Show Debugging tab';
+CTC_OPTIONS['greentoactive'] = 'Send things that normally go to Default to your currently active tab.';
 CTC_OPTIONS['hidetags'] = 'Remove channel tags from tabs.';
 CTC_OPTIONS['timestamp'] = 'Mark lines with a timestamp.[hh:mm]';
 
@@ -166,7 +171,7 @@ document.ctc_showchat = function (chan) {
 	}
 }
 
-document.ctc_addchat = function (channel, line) {
+document.ctc_addchat = function (channel, line, noall) {
 	if (!document.getElementById('ctc_tab_'+channel)) {
 		var a = document.createElement('a');
 		a.href='#';
@@ -179,6 +184,10 @@ document.ctc_addchat = function (channel, line) {
 
 		document.getElementById('ctc_tabs').appendChild(a);
 		document.ctc_size();
+	}
+
+	if (!noall && GM_getValue('alltab')) {
+		document.ctc_addchat('all', line, true);
 	}
 
 	if (!document.ctc_chats[channel]) { document.ctc_chats[channel] = ""; }
@@ -234,9 +243,9 @@ document.ctc_loop = function () {
 			if (channel == 'link') { channel = 'default'; }
 
 			// Only dig further if unchanneled
-			if (channel == '' || channel == 'default') {
-				var pmreg = /<font color="blue"><b>private to <a class="(?:[^"]*)?" target="mainpane" href="showplayer.php\?who=[0-9]+"><font color="blue">([^<]+)</;
-				var pmreg2 = /<a class="(?:[^"]*)?" target="mainpane" href="showplayer.php\?who=[0-9]+"><font color="blue"><b>([^(]+) \(private\):/;
+			if ((channel == '' || channel == 'default') && line.indexOf('color="blue"') != -1) {
+				var pmreg = /<font color="blue"><b>private to <a[^>]*><font[^>]*>([^<]+)</;
+				var pmreg2 = /<a[^>]*><font[^>]*>(?:<b>)?([^(]+) \(private\):/;
 			
 				if (match3 = pmreg.exec(line)) {
 					channel = '>'+match3[1].replace(/ /g, '_');
@@ -284,10 +293,13 @@ document.ctc_loop = function () {
 			}
 
 			if(line.indexOf('</font>') == 0) {
-				document.ctc_addchat(document.ctc_lasttextchannel,'</font');
+				document.ctc_addchat(document.ctc_lasttextchannel,'</font', true);
 			}
 
 			if (line != '') {
+				if (channel == 'default' && GM_getValue('greentoactive', false)) {
+					channel = document.ctc_currentchat;
+				}
 				document.ctc_addchat(channel, line);
 			}
 
@@ -430,8 +442,13 @@ window.addEventListener('keypress', document.ctc_keys, true);
 
 //unsafeWindow.actions["/own-tab"] = {"action":2, "useid" : false, true};
 
-document.ctc_addchat('default', '<b>'+CTC_HELP.replace(/\n/g, '<br>').replace(/Chat/,'Chat</b>') + '<hr/><br/>');
-document.ctc_loop();
+document.ctc_addchat('default', '<b>'+CTC_HELP.replace(/\n/g, '<br>').replace(/Chat/,'Chat</b>') + '<hr/><br/>', true);
 
 foo = document.getElementsByName('graf');
 foo[0].focus();
+
+if (GM_getValue('alltab', false)) {
+	document.ctc_addchat('all', '<font color="green">Welcome to the Almighty All Tab</font>', true);
+}
+
+document.ctc_loop();
