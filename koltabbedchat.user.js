@@ -8,7 +8,7 @@
 // @namespace      http://hogsofdestiny.com/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.5 - Tabbed Chat Interface for KoL
+// @description    Version 0.5.2 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -34,6 +34,8 @@
  /options to list options and /option FEATURE to toggle them.
  These are saved persistently.
 
+ /sets to list variables, and /set to set them
+
  ctrl-left and ctrl-right to switch tabs
 
 TODO:
@@ -44,6 +46,12 @@ TODO:
 /*************************** Change Log ***************************
 
 Latest Update:
+0.5.2:  Manage some /w(ho) ambiguity
+        Don't add extra spaces around whoiseses
+        Added /set 
+        Added /set buffer
+		Added /option verticalkeys
+0.5.1:  Don't prepend channel for current channel
 0.5:    Added /option alltab
 0.4.5:  More PM issues, apparently sometimes PMs have no class (duh)
 0.4.4:  Added /option greentoactive
@@ -71,9 +79,13 @@ Latest Update:
 
 *******************************************************************/
 
+
+
+
+
 var CTC_TAB_HEIGHT = 25;
 var CTC_MARKER = '<!--CDROCKS--><hr style="width: 50%; background-color: #00f; height: 4px;" id="ID" /><!--CDROCKS-->';
-var CTC_HELP = 	"CDMoyer's Tabbed KoL Chat\n\nClick on the stuff at the top to change channels.\nMessages and such appear in 'Default'.\nDouble Click a channel to close it's tab (you are still in or listening to it... it will reappear if new text enters that channel)\n\n/clear and /mark work to clear a buffer and mark a position. (and /clearall or /clsa clear all tabs)\n\n/options in any tab to see options to set with /option\n\nCtrl-Left and Ctrl-Rigth will switch tabs\n";
+var CTC_HELP = 	"CDMoyer's Tabbed KoL Chat\n\nClick on the stuff at the top to change channels.\nMessages and such appear in 'Default'.\nDouble Click a channel to close it's tab (you are still in or listening to it... it will reappear if new text enters that channel)\n\n/clear and /mark work to clear a buffer and mark a position. (and /clearall or /clsa clear all tabs)\n\n/options in any tab to see options to set with /option\n/set to see and then set various variables\n\nCtrl-Left and Ctrl-Rigth will switch tabs\n";
 
 
 var CTC_OPTIONS = new Object;
@@ -82,6 +94,19 @@ CTC_OPTIONS['debug'] = 'Show Debugging tab';
 CTC_OPTIONS['greentoactive'] = 'Send things that normally go to Default to your currently active tab.';
 CTC_OPTIONS['hidetags'] = 'Remove channel tags from tabs.';
 CTC_OPTIONS['timestamp'] = 'Mark lines with a timestamp.[hh:mm]';
+CTC_OPTIONS['verticalkeys'] = 'Use ctrl-up and ctrl-down for changing tabs.';
+
+var CTC_SETS = new Object;
+var CTC_SETS_DEF = new Object;
+CTC_SETS['buffer'] = 'Max channel buffer size, in characters (0 is infinite)';
+CTC_SETS_DEF['buffer'] = 15000;
+
+
+document.ctc_get_set = function (set) {
+	var val = GM_getValue(set);
+	if (val == null) { return CTC_SETS_DEF[set]; }
+	else { return val; }
+}
 
 document.getElementById("ChatWindow").style.display = 'none';
 
@@ -135,6 +160,23 @@ document.ctc_size = function () {
 
 document.ctc_originitsizes = unsafeWindow.initsizes;
 unsafeWindow.initsizes = document.ctc_size;
+
+
+document.ctc_trunc_chat = function (chan) {
+	var max = document.ctc_get_set('buffer');
+	if (max == 0) { return;} 
+
+	len = document.ctc_chats[chan].length;
+	
+	if (len > max) {
+		rep = document.ctc_chats[chan].substring(len-max,len);
+		rep = rep.substring(rep.indexOf('<br'),max);
+		document.ctc_chats[chan] = rep;
+		if (chan == document.ctc_currentchat) {
+			document.ctc_showchat(document.ctc_currentchat);
+		}
+	}
+}
 
 document.ctc_killtab = function (chan) {
 	if (chan == 'default') { return false; }
@@ -204,18 +246,24 @@ document.ctc_addchat = function (channel, line, noall) {
 		if (mins < 10) { mins = '0' + mins; }
 		line = '['+ hours+':'+ mins+'] ' + line;
 	}
-	document.ctc_chats[channel] += line + '<br>';
+
+	var justfont = (line == '</font>');
+	var br = (justfont ? '' : '<br/>');
+	document.ctc_chats[channel] += line + br;
+
 	if (channel == document.ctc_currentchat) {
-		document.getElementById('ctc_div').innerHTML += line + '<br>';
+		document.getElementById('ctc_div').innerHTML += line + br;
 		dv = document.getElementById('ctc_div');
 		dv.scrollTop = dv.scrollHeight - dv.clientHeight;
 	}
-	else if(line != '</font>') {
+	else if(!justfont) {
 		var tab = document.getElementById('ctc_tab_'+channel);
 		if (tab) {
 			tab.className = 'ctc_tab_new';
 		}
 	}
+
+	document.ctc_trunc_chat(channel);
 }
 
 //window.setTimeout(document.ctc_size, 2000);
@@ -293,7 +341,7 @@ document.ctc_loop = function () {
 			}
 
 			if(line.indexOf('</font>') == 0) {
-				document.ctc_addchat(document.ctc_lasttextchannel,'</font', true);
+				document.ctc_addchat(document.ctc_lasttextchannel,'</font>', true);
 			}
 
 			if (line != '') {
@@ -325,7 +373,10 @@ document.ctc_inputmunge = function () {
 	//if (txt.substring(0,9) == '/own-tab ') {
 		//user = txt.substring(5);
 	//}
-	if ((txt.indexOf('/') != 0 || txt.indexOf('/me') == 0 || txt.indexOf('/em') == 0)  && document.ctc_currentchat != 'default' && txt != '') {
+	if ((txt.indexOf('/') != 0 || txt.indexOf('/me') == 0 || txt.indexOf('/em') == 0)  && document.ctc_currentchat != 'default' 
+			&& document.ctc_currentchat != 'all' 
+			&& document.ctc_currentchat != document.ctc_inchannel
+			&& txt != '') {
 		if (document.ctc_currentchat.indexOf('>') == 0) {
 			foo[0].value = '/msg ' + (document.ctc_currentchat.replace(/ /g,'_').replace(/^>/, '')) + ' ' + foo[0].value;
 		}
@@ -334,7 +385,7 @@ document.ctc_inputmunge = function () {
 		}
 		return true;
 	}
-	else if (txt == '/who' && document.ctc_currentchat != 'default' &&
+	else if (txt.match('/w(?:ho)? *$') && document.ctc_currentchat != 'default' &&
 			 document.ctc_currentchat.indexOf('>') != 0) {
 		foo[0].value = '/who ' + (document.ctc_currentchat);
 		return true;
@@ -374,6 +425,30 @@ document.ctc_inputmunge = function () {
 		}
 		return false;
 	}
+	else if (txt.indexOf('/set') == 0) {
+		document.ctc_showchat('default');
+		if (txt.indexOf('/sets') != 0) {
+			var match = /set ([a-z]*) (.*)/i.exec(txt);
+			if (match) {
+				set = match[1];
+				val = match[2];
+				if (CTC_SETS[set]) {
+					GM_setValue(set, val);
+					document.ctc_addchat('default', 'Variable: '+set+' set to <b>'+val+'</b>');
+				}
+				else {
+					document.ctc_addchat('default', 'Invalid variable: <b>'+set+'</b>.  Type <b>/sets</b> for variable list');
+				}
+				return false;
+			}
+		}
+
+		document.ctc_addchat('default', '<br/><b>Variables (set with /set VAR XXXX)</b>');
+		for (var cmd in CTC_SETS) {
+			document.ctc_addchat('default', '/set <b>'+cmd+'</b> [<b>'+document.ctc_get_set(cmd)+'</b>] - '+CTC_SETS[cmd]);
+		}
+		return false;
+	}
 	else if (txt == '/mark') {
 		document.ctc_chats[document.ctc_currentchat] += '<hr width="90%">';
 		document.getElementById('ctc_div').innerHTML += '<hr width="90%"';
@@ -396,7 +471,15 @@ unsafeWindow.submitchat = function (override) {
 
 document.ctc_keys = function (ev) {
 	var goto = 0;
-	if (!ev.ctrlKey || (ev.keyCode != 37 && ev.keyCode != 39)) {
+	var left = 37;
+	var right = 39;
+	if (GM_getValue('verticalkeys', false)) {
+		left = 38;
+		right = 40;
+	}
+
+	
+	if (!ev.ctrlKey || (ev.keyCode != left && ev.keyCode != right)) {
 		return true;
 	}
 
@@ -407,7 +490,7 @@ document.ctc_keys = function (ev) {
 		XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
 		null);
 
-	if (ev.ctrlKey && ev.keyCode == 37) {
+	if (ev.ctrlKey && ev.keyCode == left) {
 		var last = 0;
 		for (var i=0; i< tabs.snapshotLength; i++) {
 			c = tabs.snapshotItem(i).getAttribute('id').replace('ctc_tab_', '');
@@ -418,7 +501,7 @@ document.ctc_keys = function (ev) {
 		}
 		if (!goto) { goto = last; }
 	}
-	else if (ev.ctrlKey && ev.keyCode == 39) {
+	else if (ev.ctrlKey && ev.keyCode == right) {
 		var first = 0;
 		var next = 0;
 		for (var i=0; i< tabs.snapshotLength; i++) {
