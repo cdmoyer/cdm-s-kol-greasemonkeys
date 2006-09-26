@@ -8,7 +8,7 @@
 // @namespace      http://hogsofdestiny.com/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.5.2 - Tabbed Chat Interface for KoL
+// @description    Version 0.5.5 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -46,6 +46,13 @@ TODO:
 /*************************** Change Log ***************************
 
 Latest Update:
+0.5.5:  Made it easier to read scrollback
+        Fixed bug wherein /mark wouldn't cause a scroll
+		Upgraded /mark to the new version
+0.5.4:  Handle macros
+        Only do /who at the beginning of a line
+0.5.3:  Fixed emotes when channel tags are off.
+0.5.2a: Minor bugfix from last
 0.5.2:  Manage some /w(ho) ambiguity
         Don't add extra spaces around whoiseses
         Added /set 
@@ -173,7 +180,7 @@ document.ctc_trunc_chat = function (chan) {
 		rep = rep.substring(rep.indexOf('<br'),max);
 		document.ctc_chats[chan] = rep;
 		if (chan == document.ctc_currentchat) {
-			document.ctc_showchat(document.ctc_currentchat);
+			document.getElementById('ctc_div').innerHTML = rep;
 		}
 	}
 }
@@ -252,9 +259,19 @@ document.ctc_addchat = function (channel, line, noall) {
 	document.ctc_chats[channel] += line + br;
 
 	if (channel == document.ctc_currentchat) {
-		document.getElementById('ctc_div').innerHTML += line + br;
 		dv = document.getElementById('ctc_div');
-		dv.scrollTop = dv.scrollHeight - dv.clientHeight;
+		// If we're already scrolled back a bit, we don't scroll more after
+		// we update the chat pane. This will, hopefully, keep us from
+		// bouncing away when someone's trying to read their scrollback
+		var autoscroll = (dv.scrollTop == dv.scrollHeight - dv.clientHeight) ?
+			true : false;
+		
+		document.getElementById('ctc_div').innerHTML += line + br;
+		if (autoscroll)
+		{
+			dv.scrollTop = dv.scrollHeight - dv.clientHeight;
+		}
+		
 	}
 	else if(!justfont) {
 		var tab = document.getElementById('ctc_tab_'+channel);
@@ -335,7 +352,7 @@ document.ctc_loop = function () {
 				else if(line.indexOf('<') == -1 && document.ctc_lasttextchannel == 'haiku') {
 					channel = 'haiku';
 				}
-				else if(line.indexOf('<b>') == 0 ) {
+				else if(line.indexOf('<b>') == 0 || line.indexOf('<i><b>') == 0) {
 					channel = document.ctc_inchannel;
 				}
 			}
@@ -373,7 +390,7 @@ document.ctc_inputmunge = function () {
 	//if (txt.substring(0,9) == '/own-tab ') {
 		//user = txt.substring(5);
 	//}
-	if ((txt.indexOf('/') != 0 || txt.indexOf('/me') == 0 || txt.indexOf('/em') == 0)  && document.ctc_currentchat != 'default' 
+	if ((txt.indexOf('/') != 0 || txt.indexOf('/me') == 0 || txt.indexOf('/em') == 0 || txt.match('^/[0-9]'))  && document.ctc_currentchat != 'default' 
 			&& document.ctc_currentchat != 'all' 
 			&& document.ctc_currentchat != document.ctc_inchannel
 			&& txt != '') {
@@ -385,7 +402,7 @@ document.ctc_inputmunge = function () {
 		}
 		return true;
 	}
-	else if (txt.match('/w(?:ho)? *$') && document.ctc_currentchat != 'default' &&
+	else if (txt.match('^/w(?:ho)? *$') && document.ctc_currentchat != 'default' &&
 			 document.ctc_currentchat.indexOf('>') != 0) {
 		foo[0].value = '/who ' + (document.ctc_currentchat);
 		return true;
@@ -450,8 +467,11 @@ document.ctc_inputmunge = function () {
 		return false;
 	}
 	else if (txt == '/mark') {
-		document.ctc_chats[document.ctc_currentchat] += '<hr width="90%">';
-		document.getElementById('ctc_div').innerHTML += '<hr width="90%"';
+		var d = new Date();
+		var line = '<center style="tiny">&mdash;&mdash;&mdash;&nbsp;' + (d.getHours()%12) + ':' + (d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes()) + ':' + (d.getSeconds() <10 ? '0' + d.getSeconds() : d.getSeconds()) + '&nbsp;&mdash;&mdash;&mdash;</center>';
+		document.ctc_chats[document.ctc_currentchat] += line;
+		document.getElementById('ctc_div').innerHTML += line;
+		dv.scrollTop = dv.scrollHeight - dv.clientHeight;
 		return false;
 	}
 
