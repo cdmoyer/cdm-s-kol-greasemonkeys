@@ -8,7 +8,7 @@
 // @namespace      http://hogsofdestiny.com/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.5.5 - Tabbed Chat Interface for KoL
+// @description    Version 0.5.6 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -46,9 +46,11 @@ TODO:
 /*************************** Change Log ***************************
 
 Latest Update:
+0.5.6:  At long last, a gothy fix
 0.5.5:  Made it easier to read scrollback
         Fixed bug wherein /mark wouldn't cause a scroll
 		Upgraded /mark to the new version
+        *  This Patch came from Allanc		
 0.5.4:  Handle macros
         Only do /who at the beginning of a line
 0.5.3:  Fixed emotes when channel tags are off.
@@ -351,6 +353,10 @@ document.ctc_loop = function () {
 				}
 				else if(line.indexOf('<') == -1 && document.ctc_lasttextchannel == 'haiku') {
 					channel = 'haiku';
+				}
+				else if(line.indexOf('<b>') == -1 && line.indexOf('<i>') > 0 && document.ctc_lasttextchannel) {
+					// Perhaps, Gothy
+					channel = document.ctc_lasttextchannel;
 				}
 				else if(line.indexOf('<b>') == 0 || line.indexOf('<i><b>') == 0) {
 					channel = document.ctc_inchannel;
