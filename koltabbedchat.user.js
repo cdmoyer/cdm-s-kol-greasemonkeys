@@ -8,7 +8,7 @@
 // @namespace      http://hogsofdestiny.com/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.5.6 - Tabbed Chat Interface for KoL
+// @description    Version 0.5.8 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -40,12 +40,17 @@
 
 TODO:
 
+
  
 *******************************************************************/
 
 /*************************** Change Log ***************************
 
 Latest Update:
+0.5.8:  MMG tab!
+        * This Patch came from Allanc
+0.5.7:  While scrolled back, no longer truncates the buffer
+        * This Patch came from Allanc
 0.5.6:  At long last, a gothy fix
 0.5.5:  Made it easier to read scrollback
         Fixed bug wherein /mark wouldn't cause a scroll
@@ -94,7 +99,7 @@ Latest Update:
 
 var CTC_TAB_HEIGHT = 25;
 var CTC_MARKER = '<!--CDROCKS--><hr style="width: 50%; background-color: #00f; height: 4px;" id="ID" /><!--CDROCKS-->';
-var CTC_HELP = 	"CDMoyer's Tabbed KoL Chat\n\nClick on the stuff at the top to change channels.\nMessages and such appear in 'Default'.\nDouble Click a channel to close it's tab (you are still in or listening to it... it will reappear if new text enters that channel)\n\n/clear and /mark work to clear a buffer and mark a position. (and /clearall or /clsa clear all tabs)\n\n/options in any tab to see options to set with /option\n/set to see and then set various variables\n\nCtrl-Left and Ctrl-Rigth will switch tabs\n";
+var CTC_HELP = 	"CDMoyer's Tabbed KoL Chat\n\nClick on the stuff at the top to change channels.\nMessages and such appear in 'Default'.\nDouble Click a channel to close it's tab (you are still in or listening to it... it will reappear if new text enters that channel)\n\n/clear and /mark work to clear a buffer and mark a position. (and /clearall or /clsa clear all tabs)\n\n/options in any tab to see options to set with /option\n/set to see and then set various variables\n\nCtrl-Left and Ctrl-Right will switch tabs\n";
 
 
 var CTC_OPTIONS = new Object;
@@ -104,6 +109,7 @@ CTC_OPTIONS['greentoactive'] = 'Send things that normally go to Default to your 
 CTC_OPTIONS['hidetags'] = 'Remove channel tags from tabs.';
 CTC_OPTIONS['timestamp'] = 'Mark lines with a timestamp.[hh:mm]';
 CTC_OPTIONS['verticalkeys'] = 'Use ctrl-up and ctrl-down for changing tabs.';
+CTC_OPTIONS['mmgtab'] = 'The MMG tab, with all Money Making Game messages';
 
 var CTC_SETS = new Object;
 var CTC_SETS_DEF = new Object;
@@ -173,7 +179,10 @@ unsafeWindow.initsizes = document.ctc_size;
 
 document.ctc_trunc_chat = function (chan) {
 	var max = document.ctc_get_set('buffer');
-	if (max == 0) { return;} 
+	if (max == 0 || (dv.scrollTop != dv.scrollHeight - dv.clientHeight)) 
+	{
+		return;
+	} 
 
 	len = document.ctc_chats[chan].length;
 	
@@ -360,6 +369,17 @@ document.ctc_loop = function () {
 				}
 				else if(line.indexOf('<b>') == 0 || line.indexOf('<i><b>') == 0) {
 					channel = document.ctc_inchannel;
+				}
+				// MMG tab. Checks for the text that pops up from an MMG
+				// transaction in a line starting with greenness, then checks
+				// to make sure the user wants an MMG tab, then if all of these
+				// are true, tosses it into the MMG tab. Yay MMG tab!
+				else if (line.indexOf('took your') != -1 &&
+					line.indexOf('Meat bet, and you') != -1 && 
+					line.indexOf('<font color="green"') == 0 &&
+					GM_getValue('mmgtab', false))
+				{
+					channel='MMG';
 				}
 			}
 
