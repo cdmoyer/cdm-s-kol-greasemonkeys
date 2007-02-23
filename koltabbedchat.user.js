@@ -5,10 +5,10 @@
 //
 // ==UserScript==
 // @name           CDM's Tabbed KoL Chat
-// @namespace      http://hogsofdestiny.com/
+// @namespace      http://noblesse-oblige.org/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.5.8 - Tabbed Chat Interface for KoL
+// @description    Version 0.7 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -47,6 +47,11 @@ TODO:
 /*************************** Change Log ***************************
 
 Latest Update:
+0.7     New pm notification options
+        /set pmalert redinput
+        /set pmalert flash
+		/set pmalert off
+0.6     Added option condensechannels
 0.5.8:  MMG tab!
         * This Patch came from Allanc
 0.5.7:  While scrolled back, no longer truncates the buffer
@@ -110,11 +115,13 @@ CTC_OPTIONS['hidetags'] = 'Remove channel tags from tabs.';
 CTC_OPTIONS['timestamp'] = 'Mark lines with a timestamp.[hh:mm]';
 CTC_OPTIONS['verticalkeys'] = 'Use ctrl-up and ctrl-down for changing tabs.';
 CTC_OPTIONS['mmgtab'] = 'The MMG tab, with all Money Making Game messages';
+CTC_OPTIONS['condensechannels'] = 'Place all channel messages in one "Chat" tab.';
 
 var CTC_SETS = new Object;
 var CTC_SETS_DEF = new Object;
 CTC_SETS['buffer'] = 'Max channel buffer size, in characters (0 is infinite)';
-CTC_SETS_DEF['buffer'] = 15000;
+CTC_SETS['pmalert'] = 'How you wish to be notified of new PMs (off, redinput, flash).  You will be notified whenever a new (or closed) PM tab is opened.';
+CTC_SETS_DEF['pmalert'] = 'off'
 
 
 document.ctc_get_set = function (set) {
@@ -198,6 +205,7 @@ document.ctc_trunc_chat = function (chan) {
 
 document.ctc_killtab = function (chan) {
 	if (chan == 'default') { return false; }
+	document.pm_visited(chan);
 	tab = document.getElementById('ctc_tab_'+chan);
 	if (tab) { 
 		if (confirm('Close the tab "'+chan+'"? (OK to Close)')) {
@@ -209,9 +217,39 @@ document.ctc_killtab = function (chan) {
 	return false;
 }
 
+document.newpm_opened = function (chan) {
+	document.ctc_newpms[chan] = 1;
+	if (document.ctc_get_set('pmalert') == 'redinput') {
+		document.ctc_get_graf().style.backgroundColor = '#fdd';
+	}
+	else if (document.ctc_get_set('pmalert') == 'flash') {
+		on = "dv = document.body; dv.style.backgroundColor =  '#000'; dv.style.color =  '#fff';";
+		off = "dv = document.body; dv.style.backgroundColor =  '#fff'; dv.style.color =  '#000';";
+		eval(on);
+		setTimeout(off,  500);
+		setTimeout( on, 1000);
+		setTimeout(off, 1500);
+		setTimeout( on, 2000);
+		setTimeout(off, 2500);
+	}
+}
+
+document.pm_visited = function (chan) {
+	document.ctc_newpms[chan] = null;
+	var still_alert = false;
+	for (var i in document.ctc_newpms ) {
+		if (i && i == 1) { still_alert = true; }
+	}
+
+	if (!still_alert) {
+		document.ctc_get_graf().style.backgroundColor = '#fff';
+	}
+}
+
 
 document.ctc_showchat = function (chan) {
 	tab = document.getElementById('ctc_tab_'+document.ctc_currentchat)
+	document.pm_visited(chan);
 	if(tab) { tab.className = 'ctc_tab'; }
 
 	var marker = CTC_MARKER.replace('ID', 'mark_'+document.ctc_currentchat);
@@ -244,6 +282,9 @@ document.ctc_addchat = function (channel, line, noall) {
 
 		document.getElementById('ctc_tabs').appendChild(a);
 		document.ctc_size();
+		if (channel.indexOf('>') == 0) { 
+			document.newpm_opened(channel);
+		}
 	}
 
 	if (!noall && GM_getValue('alltab')) {
@@ -298,6 +339,7 @@ document.ctc_addchat = function (channel, line, noall) {
 
 document.ctc_currentchat = 'default';
 document.ctc_chats = new Object;
+document.ctc_newpms = new Object;
 document.ctc_inchannel = 'default';
 
 document.ctc_lasttextchannel = '';
@@ -387,9 +429,18 @@ document.ctc_loop = function () {
 				document.ctc_addchat(document.ctc_lasttextchannel,'</font>', true);
 			}
 
+			if(line.indexOf('<font') != -1 && 
+			   (line.indexOf('</font>') == -1 ||
+				line.indexOf('<font') > line.indexOf('</font'))) {
+				line += '</font>';
+			}
+
 			if (line != '') {
 				if (channel == 'default' && GM_getValue('greentoactive', false)) {
 					channel = document.ctc_currentchat;
+				}
+				if (channel.indexOf('>') != 0 && channel != 'default' && GM_getValue('condensechannels', false)) {
+					channel = 'Chat';
 				}
 				document.ctc_addchat(channel, line);
 			}
@@ -567,14 +618,18 @@ document.ctc_keys = function (ev) {
 	return true;
 }
 
+document.ctc_get_graf = function () {
+	foo = document.getElementsByName('graf');
+	return foo[0];
+}
+
 window.addEventListener('keypress', document.ctc_keys, true);
 
 //unsafeWindow.actions["/own-tab"] = {"action":2, "useid" : false, true};
 
 document.ctc_addchat('default', '<b>'+CTC_HELP.replace(/\n/g, '<br>').replace(/Chat/,'Chat</b>') + '<hr/><br/>', true);
 
-foo = document.getElementsByName('graf');
-foo[0].focus();
+document.ctc_get_graf().focus();
 
 if (GM_getValue('alltab', false)) {
 	document.ctc_addchat('all', '<font color="green">Welcome to the Almighty All Tab</font>', true);
