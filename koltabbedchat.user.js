@@ -1,5 +1,5 @@
 // CDM's Tabbed KoL
-// Copyright (c) 2006, Chris Moyer
+// Copyright (c) 2007, Chris Moyer
 // Released under the GPL license
 // http://www.gnu.org/copyleft/gpl.html
 //
@@ -8,7 +8,7 @@
 // @namespace      http://noblesse-oblige.org/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.7 - Tabbed Chat Interface for KoL
+// @description    Version 0.8.6 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -47,6 +47,12 @@ TODO:
 /*************************** Change Log ***************************
 
 Latest Update:
+0.8.6   Added "accepttechsmurf" option, and default warnings on
+        all TechSmurf links
+0.8.5		mmm, math
+	 	=NUMBER[+-/*]NUMBER
+0.8     /set tabposition (top|bottom)
+        firefox 2.0.0.2 fix
 0.7     New pm notification options
         /set pmalert redinput
         /set pmalert flash
@@ -116,13 +122,16 @@ CTC_OPTIONS['timestamp'] = 'Mark lines with a timestamp.[hh:mm]';
 CTC_OPTIONS['verticalkeys'] = 'Use ctrl-up and ctrl-down for changing tabs.';
 CTC_OPTIONS['mmgtab'] = 'The MMG tab, with all Money Making Game messages';
 CTC_OPTIONS['condensechannels'] = 'Place all channel messages in one "Chat" tab.';
+CTC_OPTIONS['accepttechsmurf'] = 'Accept TechSmurf links without a warning.';
 
 var CTC_SETS = new Object;
 var CTC_SETS_DEF = new Object;
 CTC_SETS['buffer'] = 'Max channel buffer size, in characters (0 is infinite)';
 CTC_SETS['pmalert'] = 'How you wish to be notified of new PMs (off, redinput, flash).  You will be notified whenever a new (or closed) PM tab is opened.';
-CTC_SETS_DEF['pmalert'] = 'off'
+CTC_SETS['tabposition'] = 'Where to place the tabs (top, bottom)';
+CTC_SETS_DEF['tabposition'] = 'top'
 
+var TECHWARN = 'Keep in mind, this link was posted by TechSmurf.  It may contain a picture that no human being should ever see.  Ever.  Click OK if you really, really want to see this link, likely of a flayed piece of human anatomy.';
 
 document.ctc_get_set = function (set) {
 	var val = GM_getValue(set);
@@ -176,8 +185,28 @@ document.ctc_size = function () {
 		document.getElementById("ctc_div").style.width=w;
 		document.getElementById("ctc_tabs").style.width=w;
 		document.getElementById("InputForm").style.width=w;
-		document.getElementById("ctc_div").style.height=document.body.clientHeight-document.getElementById("InputForm").offsetHeight-6 - document.getElementById('ctc_tabs').offsetHeight - 6;
-		document.getElementById("ctc_div").style.top = 3 + (document.getElementById('ctc_tabs').offsetHeight);
+		document.getElementById("InputForm").style.height=document.ctc_get_graf().offsetHeight + 0;
+
+		document.getElementById("ctc_div").style.height=document.body.clientHeight-document.getElementById("InputForm").offsetHeight-6 - document.getElementById('ctc_tabs').offsetHeight - 8;
+		document.getElementById("ctc_div").style.height=document.body.clientHeight-document.getElementById("InputForm").offsetHeight-6 - document.getElementById('ctc_tabs').offsetHeight - 8;
+
+		var tabstop = 2;
+		var maintop = 2 + tabstop + (document.getElementById('ctc_tabs').offsetHeight);
+		var graftop = 2 + maintop + (document.getElementById('ctc_div').offsetHeight);
+		if (document.ctc_get_set('tabposition') == 'bottom') {
+			maintop = 2;
+			tabstop = 2 + maintop + (document.getElementById('ctc_div').offsetHeight);
+			graftop = 2 + tabstop + (document.getElementById('ctc_tabs').offsetHeight);
+
+		}
+		/* else if (document.ctc_get_set('tabposition') == 'underinput') {
+			maintop = 2;
+			graftop = 2 + maintop +(document.getElementById('ctc_div').offsetHeight); 
+			tabstop = 2 + graftop + (document.getElementById('InputForm').offsetHeight);
+		} */
+		document.getElementById("ctc_tabs").style.top = tabstop;
+		document.getElementById("ctc_div").style.top = maintop;
+		document.getElementById("InputForm").style.top = graftop;
 }
 
 document.ctc_originitsizes = unsafeWindow.initsizes;
@@ -297,6 +326,12 @@ document.ctc_addchat = function (channel, line, noall) {
 		line = line.replace('['+channel+']', '');
 	}
 
+	if (!GM_getValue('accepttechsmurf', false)) {
+		if (line.indexOf('who=45837') > 0) {
+			line = line.replace(/<a target="_blank/, "<a onclick='return confirm(\"" +TECHWARN+ "\");' target=\"_blank");
+			line = line.replace(/\[link\]/, "[<font color='red'><b>NSFW Link</b></font>]");
+		}
+	}
 	if (GM_getValue('timestamp', false) && line.match(/showplayer\.php/)) {
 		now = new Date();
 		hours = now.getHours();
@@ -461,12 +496,26 @@ helpl.addEventListener('click', function () { document.ctc_help(); }, true);
 document.getElementById('ctc_tabs').appendChild(helpl);
 
 
-document.ctc_inputmunge = function () {
+unsafeWindow.ctc_inputmunge = function () {
 	foo = document.getElementsByName('graf');
 	txt = foo[0].value;
-	//if (txt.substring(0,9) == '/own-tab ') {
-		//user = txt.substring(5);
-	//}
+	if (txt.indexOf('=') == 0) {
+		var math = /= *([0-9.]*) *([+*/-]) *([0-9.]*)/.exec(txt);
+		//alert(math);
+		if (math[1] && math[2] && math[3] &&
+			math[1] != '' && math[2] != '' && math[3] != '') {
+			var result = 0;	
+			var a = parseFloat(math[1]);
+			var b = parseFloat(math[3]);
+			if (math[2] == '+') { result = a + b; }
+			else if (math[2] == '-') { result = a - b; }
+			else if (math[2] == '*') { result = a * b; }
+			else if (math[2] == '/') { result = a / b; }
+
+			document.ctc_addchat(document.ctc_currentchat, math[0].replace(/^=/,'') + ' = <b>' + result + '</b>');
+			return false;			
+		}			
+	}
 	if ((txt.indexOf('/') != 0 || txt.indexOf('/me') == 0 || txt.indexOf('/em') == 0 || txt.match('^/[0-9]'))  && document.ctc_currentchat != 'default' 
 			&& document.ctc_currentchat != 'all' 
 			&& document.ctc_currentchat != document.ctc_inchannel
@@ -533,6 +582,7 @@ document.ctc_inputmunge = function () {
 				else {
 					document.ctc_addchat('default', 'Invalid variable: <b>'+set+'</b>.  Type <b>/sets</b> for variable list');
 				}
+				document.ctc_size();
 				return false;
 			}
 		}
@@ -555,16 +605,7 @@ document.ctc_inputmunge = function () {
 	return true;
 }
 
-document.ctc_oldsubmitchat = unsafeWindow.submitchat;
-unsafeWindow.submitchat = function (override) {
-	if (document.ctc_inputmunge()) {
-		document.ctc_oldsubmitchat(override);
-	}
-	else {
-		foo = document.getElementsByName('graf');
-		foo[0].value = '';
-	}
-}
+setTimeout("oldsubmitchat = submitchat; submitchat = function (override) { if (ctc_inputmunge()) { oldsubmitchat(override); } else { foo = document.getElementsByName('graf'); foo[0].value = ''; } };", 500);
 
 document.ctc_keys = function (ev) {
 	var goto = 0;
@@ -625,7 +666,6 @@ document.ctc_get_graf = function () {
 
 window.addEventListener('keypress', document.ctc_keys, true);
 
-//unsafeWindow.actions["/own-tab"] = {"action":2, "useid" : false, true};
 
 document.ctc_addchat('default', '<b>'+CTC_HELP.replace(/\n/g, '<br>').replace(/Chat/,'Chat</b>') + '<hr/><br/>', true);
 
