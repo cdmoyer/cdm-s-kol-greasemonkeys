@@ -1,5 +1,5 @@
 // CDM's Tabbed KoL
-// Copyright (c) 2007, Chris Moyer
+// Copyright (c) 2008, Chris Moyer
 // Released under the GPL license
 // http://www.gnu.org/copyleft/gpl.html
 //
@@ -8,7 +8,7 @@
 // @namespace      http://noblesse-oblige.org/
 // @include        *kingdomofloathing.com/lchat.php
 // @include        http://127.0.0.1:*/lchat.php
-// @description    Version 0.8.6 - Tabbed Chat Interface for KoL
+// @description    Version 0.9.0 - Tabbed Chat Interface for KoL
 //
 // ==/UserScript==
 
@@ -38,7 +38,6 @@
 
  ctrl-left and ctrl-right to switch tabs
 
-TODO:
 
 
  
@@ -47,6 +46,9 @@ TODO:
 /*************************** Change Log ***************************
 
 Latest Update:
+0.9.0     Options and variables should work again after the latest GM security patch
+        Perhaps it will fix the long-lasting system-messages-bleed-read-all-over bug
+		Auto-Update notification
 0.8.6   Added "accepttechsmurf" option, and default warnings on
         all TechSmurf links
 0.8.5		mmm, math
@@ -108,9 +110,11 @@ Latest Update:
 
 
 
+var CTC_VERSION = "0.9.0";
 var CTC_TAB_HEIGHT = 25;
 var CTC_MARKER = '<!--CDROCKS--><hr style="width: 50%; background-color: #00f; height: 4px;" id="ID" /><!--CDROCKS-->';
 var CTC_HELP = 	"CDMoyer's Tabbed KoL Chat\n\nClick on the stuff at the top to change channels.\nMessages and such appear in 'Default'.\nDouble Click a channel to close it's tab (you are still in or listening to it... it will reappear if new text enters that channel)\n\n/clear and /mark work to clear a buffer and mark a position. (and /clearall or /clsa clear all tabs)\n\n/options in any tab to see options to set with /option\n/set to see and then set various variables\n\nCtrl-Left and Ctrl-Right will switch tabs\n";
+var CTC_RELOAD = 'You must <a href="lchat.php" style="color: red; text-decoration: underline">reload chat</a> for this to take effect (<b>read all your tabs first!</b>)"';
 
 
 var CTC_OPTIONS = new Object;
@@ -130,14 +134,28 @@ CTC_SETS['buffer'] = 'Max channel buffer size, in characters (0 is infinite)';
 CTC_SETS['pmalert'] = 'How you wish to be notified of new PMs (off, redinput, flash).  You will be notified whenever a new (or closed) PM tab is opened.';
 CTC_SETS['tabposition'] = 'Where to place the tabs (top, bottom)';
 CTC_SETS_DEF['tabposition'] = 'top'
+CTC_SETS_DEF['buffer'] = '50000'
 
 var TECHWARN = 'Keep in mind, this link was posted by TechSmurf.  It may contain a picture that no human being should ever see.  Ever.  Click OK if you really, really want to see this link, likely of a flayed piece of human anatomy.';
 
+
+document.ctc_set_cache = new Array;
+for (var cmd in CTC_SETS) {
+	document.ctc_set_cache[cmd] = GM_getValue(cmd);
+}
+
 document.ctc_get_set = function (set) {
-	var val = GM_getValue(set);
+	var val = document.ctc_set_cache[set];
 	if (val == null) { return CTC_SETS_DEF[set]; }
 	else { return val; }
 }
+
+document.ctc_options_cache = new Array;
+for (var cmd in CTC_OPTIONS) {
+	document.ctc_options_cache[cmd] = GM_getValue(cmd, false);
+}
+
+document.ctc_getValue = function (key) { return document.ctc_options_cache[key]; }
 
 document.getElementById("ChatWindow").style.display = 'none';
 
@@ -316,23 +334,23 @@ document.ctc_addchat = function (channel, line, noall) {
 		}
 	}
 
-	if (!noall && GM_getValue('alltab')) {
+	if (!noall && document.ctc_getValue('alltab')) {
 		document.ctc_addchat('all', line, true);
 	}
 
 	if (!document.ctc_chats[channel]) { document.ctc_chats[channel] = ""; }
 
-	if (GM_getValue('hidetags', false) && channel != 'default' && channel.indexOf('>') != 0) {
+	if (document.ctc_getValue('hidetags') && channel != 'default' && channel.indexOf('>') != 0) {
 		line = line.replace('['+channel+']', '');
 	}
 
-	if (!GM_getValue('accepttechsmurf', false)) {
+	if (!document.ctc_getValue('accepttechsmurf')) {
 		if (line.indexOf('who=45837') > 0) {
 			line = line.replace(/<a target="_blank/, "<a onclick='return confirm(\"" +TECHWARN+ "\");' target=\"_blank");
 			line = line.replace(/\[link\]/, "[<font color='red'><b>NSFW Link</b></font>]");
 		}
 	}
-	if (GM_getValue('timestamp', false) && line.match(/showplayer\.php/)) {
+	if (document.ctc_getValue('timestamp') && line.match(/showplayer\.php/)) {
 		now = new Date();
 		hours = now.getHours();
 		mins = now.getMinutes();
@@ -426,7 +444,7 @@ document.ctc_loop = function () {
 					if (m && m[1] != '') { 
 						channel = m[1]; 
 						document.ctc_inchannel = channel;
-						if (GM_getValue('debug', false)) {document.ctc_addchat('D','<b>INCHANNEL = '+channel+'</b>'); }
+						if (document.ctc_getValue('debug')) {document.ctc_addchat('D','<b>INCHANNEL = '+channel+'</b>'); }
 					}
 				}
 				else if(line.indexOf('You are now talking in channel: ') != -1) {
@@ -434,7 +452,7 @@ document.ctc_loop = function () {
 					if (m && m[1] != '') { 
 						channel = m[1]; 
 						document.ctc_inchannel = channel;
-						if (GM_getValue('debug', false)) {document.ctc_addchat('D','<b>INCHANNEL = '+channel+'</b>'); }
+						if (document.ctc_getValue('debug')) {document.ctc_addchat('D','<b>INCHANNEL = '+channel+'</b>'); }
 					}
 				}
 				else if(line.indexOf('<') == -1 && document.ctc_lasttextchannel == 'haiku') {
@@ -454,7 +472,7 @@ document.ctc_loop = function () {
 				else if (line.indexOf('took your') != -1 &&
 					line.indexOf('Meat bet, and you') != -1 && 
 					line.indexOf('<font color="green"') == 0 &&
-					GM_getValue('mmgtab', false))
+					document.ctc_getValue('mmgtab'))
 				{
 					channel='MMG';
 				}
@@ -466,15 +484,21 @@ document.ctc_loop = function () {
 
 			if(line.indexOf('<font') != -1 && 
 			   (line.indexOf('</font>') == -1 ||
-				line.indexOf('<font') > line.indexOf('</font'))) {
+				line.lastIndexOf('<font') > line.lastIndexOf('</font'))) {
 				line += '</font>';
 			}
 
+			if(line.indexOf('<b>') != -1 && 
+			   (line.indexOf('</b>') == -1 ||
+				line.lastIndexOf('<b>') > line.lastIndexOf('</b>'))) {
+				line += '</b>';
+			}
+
 			if (line != '') {
-				if (channel == 'default' && GM_getValue('greentoactive', false)) {
+				if (channel == 'default' && document.ctc_getValue('greentoactive')) {
 					channel = document.ctc_currentchat;
 				}
-				if (channel.indexOf('>') != 0 && channel != 'default' && GM_getValue('condensechannels', false)) {
+				if (channel.indexOf('>') != 0 && channel != 'default' && document.ctc_getValue('condensechannels')) {
 					channel = 'Chat';
 				}
 				document.ctc_addchat(channel, line);
@@ -482,7 +506,7 @@ document.ctc_loop = function () {
 
 			document.ctc_lasttextchannel = channel;
 
-			if (GM_getValue('debug', false)) {document.ctc_addchat('D',line.replace(/</g,'&lt;').replace(/>/, '&gt;') + '---' + channel + '---');}
+			if (document.ctc_getValue('debug', false)) {document.ctc_addchat('D',line.replace(/</g,'&lt;').replace(/>/, '&gt;') + '---' + channel + '---');}
 		}
 	}
 	document.getElementById("ChatWindow").innerHTML = "";
@@ -552,8 +576,10 @@ unsafeWindow.ctc_inputmunge = function () {
 			if (match) {
 				cmd = match[1];
 				if (CTC_OPTIONS[cmd]) {
-					GM_setValue(cmd, !GM_getValue(cmd, false));
-					document.ctc_addchat('default', 'Option: '+cmd+' set to <b>'+(GM_getValue(cmd, false) ? 'true' : 'false')+'</b>');
+					window.setTimeout(function() { GM_setValue(cmd, !document.ctc_getValue(cmd));}, 0);
+					//GM_setValue(cmd, !GM_getValue(cmd, false));
+					document.ctc_addchat('default', 'Option: '+cmd+' set to <b>'+(!document.ctc_getValue(cmd) ? 'true' : 'false')+'</b>');
+					document.ctc_addchat('default', CTC_RELOAD);
 				}
 				else {
 					document.ctc_addchat('default', 'Invalid option: <b>'+cmd+'</b>.  Type <b>/options</b> for option list');
@@ -564,7 +590,7 @@ unsafeWindow.ctc_inputmunge = function () {
 
 		document.ctc_addchat('default', '<br/><b>Options (toggle with /option XXXX)</b>');
 		for (var cmd in CTC_OPTIONS) {
-			document.ctc_addchat('default', '/option <b>'+cmd+'</b> [<b>'+(GM_getValue(cmd, false)?'true':'false')+'</b>] - '+CTC_OPTIONS[cmd]);
+			document.ctc_addchat('default', '/option <b>'+cmd+'</b> [<b>'+(document.ctc_getValue(cmd)?'true':'false')+'</b>] - '+CTC_OPTIONS[cmd]);
 		}
 		return false;
 	}
@@ -576,8 +602,9 @@ unsafeWindow.ctc_inputmunge = function () {
 				set = match[1];
 				val = match[2];
 				if (CTC_SETS[set]) {
-					GM_setValue(set, val);
+					window.setTimeout(function() { GM_setValue(set, val);}, 0);
 					document.ctc_addchat('default', 'Variable: '+set+' set to <b>'+val+'</b>');
+					document.ctc_addchat('default', CTC_RELOAD);
 				}
 				else {
 					document.ctc_addchat('default', 'Invalid variable: <b>'+set+'</b>.  Type <b>/sets</b> for variable list');
@@ -605,13 +632,14 @@ unsafeWindow.ctc_inputmunge = function () {
 	return true;
 }
 
+
 setTimeout("oldsubmitchat = submitchat; submitchat = function (override) { if (ctc_inputmunge()) { oldsubmitchat(override); } else { foo = document.getElementsByName('graf'); foo[0].value = ''; } };", 500);
 
 document.ctc_keys = function (ev) {
 	var goto = 0;
 	var left = 37;
 	var right = 39;
-	if (GM_getValue('verticalkeys', false)) {
+	if (document.ctc_getValue('verticalkeys')) {
 		left = 38;
 		right = 40;
 	}
@@ -671,8 +699,39 @@ document.ctc_addchat('default', '<b>'+CTC_HELP.replace(/\n/g, '<br>').replace(/C
 
 document.ctc_get_graf().focus();
 
-if (GM_getValue('alltab', false)) {
+if (document.ctc_getValue('alltab')) {
 	document.ctc_addchat('all', '<font color="green">Welcome to the Almighty All Tab</font>', true);
+}
+
+var lastUpdated = parseInt(GM_getValue('lastupdate', 0));
+var currentHours = parseInt(new Date().getTime()/3600000);
+
+function GM_get(dest, callback)
+{ 
+	GM_xmlhttpRequest({
+		method: 'GET',
+		url: 'http://' + dest,
+		onload: function(details) {
+			if( typeof callback=='function' ){
+				callback(details.responseText);
+			}}
+	});
+}
+
+function ver_to_float(str) {return parseFloat(str.replace(/([0-9]*\.)([0-9]*)\.([0-9]*)/, "$1$2$3"))}
+
+
+// If over 4 hours, check for updates
+if ((currentHours - lastUpdated) > 4)
+{
+	GM_get("noblesse-oblige.org/cdmoyer/gm/latest.php", function(txt) { 
+		if (ver_to_float(txt) <= ver_to_float(CTC_VERSION)) { 
+			GM_log("Checked... " + txt + " is not newer than " + CTC_VERSION);
+			window.setTimeout(function(){GM_setValue('lastupdate', parseInt(new Date().getTime()/3600000));}, 0);
+			return;
+		}
+		document.ctc_addchat('default', '<font color="#cd1076">A new version of tabbed chat is available! <a href="http://noblesse-oblige.org/cdmoyer/gm/koltabbedchat.user.js" target="_new" style="font-weight:bold; text-decoration: underline">Get it!</a></font>');
+	});
 }
 
 document.ctc_loop();
