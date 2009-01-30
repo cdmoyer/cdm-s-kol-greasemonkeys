@@ -109,7 +109,7 @@ Latest Update:
 
 
 
-
+var CTC_PRIVATE = false;
 var CTC_VERSION = "0.9.0";
 var CTC_TAB_HEIGHT = 25;
 var CTC_MARKER = '<!--CDROCKS--><hr style="width: 50%; background-color: #00f; height: 4px;" id="ID" /><!--CDROCKS-->';
@@ -478,6 +478,11 @@ document.ctc_loop = function () {
 				}
 			}
 
+			if (channel == 'clan' && CTC_PRIVATE && line.indexOf('PRIVATE:') == 0) {
+				line = line.replace(/^PRIVATE:/, '');
+				channel = 'PRIVATE';
+			}
+
 			if(line.indexOf('</font>') == 0) {
 				document.ctc_addchat(document.ctc_lasttextchannel,'</font>', true);
 			}
@@ -544,7 +549,10 @@ unsafeWindow.ctc_inputmunge = function () {
 			&& document.ctc_currentchat != 'all' 
 			&& document.ctc_currentchat != document.ctc_inchannel
 			&& txt != '') {
-		if (document.ctc_currentchat.indexOf('>') == 0) {
+		if (document.ctc_currentchat == 'PRIVATE') {
+			foo[0].value = '/clan PRIVATE: ' + foo[0].value;
+		}
+		else if (document.ctc_currentchat.indexOf('>') == 0) {
 			foo[0].value = '/msg ' + (document.ctc_currentchat.replace(/ /g,'_').replace(/^>/, '')) + ' ' + foo[0].value;
 		}
 		else {
@@ -701,6 +709,10 @@ document.ctc_get_graf().focus();
 
 if (document.ctc_getValue('alltab')) {
 	document.ctc_addchat('all', '<font color="green">Welcome to the Almighty All Tab</font>', true);
+}
+
+if (CTC_PRIVATE) {
+	document.ctc_addchat('PRIVATE', '<font color="green">Welcome to the Clan Private Chat. &gt;.&gt; </font>', true);
 }
 
 var lastUpdated = parseInt(GM_getValue('lastupdate', 0));
