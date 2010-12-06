@@ -1,7 +1,19 @@
 // CDM's Tabbed KoL
-// Copyright (c) 2008, Chris Moyer
+// Copyright (c) 2008-2010, Chris Moyer (chris@inarow.net) All rights reserved
 // Released under the GPL license
 // http://www.gnu.org/copyleft/gpl.html
+//
+// Also, the simplified BSD License
+// Redistribution and use in source and binary forms, with or without modification, are
+// permitted provided that the following conditions are met:
+//  1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+//  2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY CHRIS MOYER ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CHRIS MOYER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// The views and conclusions contained in the software and documentation are those of the authors and should not be interpreted as representing official policies, either expressed or implied, of Chris Moyer.
+//
+// Pick whichever license you prefer.
 //
 // ==UserScript==
 // @name           CDM's Tabbed KoL Chat
@@ -40,7 +52,7 @@
 
 
 
- 
+
 *******************************************************************/
 
 /*************************** Change Log ***************************
@@ -68,14 +80,14 @@ Latest Update:
 0.5.5:  Made it easier to read scrollback
         Fixed bug wherein /mark wouldn't cause a scroll
 		Upgraded /mark to the new version
-        *  This Patch came from Allanc		
+        *  This Patch came from Allanc
 0.5.4:  Handle macros
         Only do /who at the beginning of a line
 0.5.3:  Fixed emotes when channel tags are off.
 0.5.2a: Minor bugfix from last
 0.5.2:  Manage some /w(ho) ambiguity
         Don't add extra spaces around whoiseses
-        Added /set 
+        Added /set
         Added /set buffer
 		Added /option verticalkeys
 0.5.1:  Don't prepend channel for current channel
@@ -100,8 +112,8 @@ Latest Update:
         Chat restart messages should appear in the active tab.
 	    When you leave a tab, a small blue line should be placed below
 	     the last text.
-        Updated help text		 
-	     
+        Updated help text
+
 0.1:    Initial release
 
 *******************************************************************/
@@ -219,7 +231,7 @@ document.ctc_size = function () {
 		}
 		/* else if (document.ctc_get_set('tabposition') == 'underinput') {
 			maintop = 2;
-			graftop = 2 + maintop +(document.getElementById('ctc_div').offsetHeight); 
+			graftop = 2 + maintop +(document.getElementById('ctc_div').offsetHeight);
 			tabstop = 2 + graftop + (document.getElementById('InputForm').offsetHeight);
 		} */
 		document.getElementById("ctc_tabs").style.top = tabstop;
@@ -233,13 +245,13 @@ unsafeWindow.initsizes = document.ctc_size;
 
 document.ctc_trunc_chat = function (chan) {
 	var max = document.ctc_get_set('buffer');
-	if (max == 0 || (dv.scrollTop != dv.scrollHeight - dv.clientHeight)) 
+	if (max == 0 || (dv.scrollTop != dv.scrollHeight - dv.clientHeight))
 	{
 		return;
-	} 
+	}
 
 	len = document.ctc_chats[chan].length;
-	
+
 	if (len > max) {
 		rep = document.ctc_chats[chan].substring(len-max,len);
 		rep = rep.substring(rep.indexOf('<br'),max);
@@ -254,9 +266,9 @@ document.ctc_killtab = function (chan) {
 	if (chan == 'default') { return false; }
 	document.pm_visited(chan);
 	tab = document.getElementById('ctc_tab_'+chan);
-	if (tab) { 
+	if (tab) {
 		if (confirm('Close the tab "'+chan+'"? (OK to Close)')) {
-			document.getElementById('ctc_tabs').removeChild(tab); 
+			document.getElementById('ctc_tabs').removeChild(tab);
 			document.ctc_showchat('default');
 			document.ctc_size();
 		}
@@ -301,7 +313,7 @@ document.ctc_showchat = function (chan) {
 
 	var marker = CTC_MARKER.replace('ID', 'mark_'+document.ctc_currentchat);
 	document.ctc_chats[document.ctc_currentchat] = document.ctc_chats[document.ctc_currentchat].replace(marker, '') + marker;
-	
+
 	document.ctc_currentchat = chan;
 	document.getElementById('ctc_div').innerHTML = document.ctc_chats[chan];
 	dv = document.getElementById('ctc_div');
@@ -329,7 +341,7 @@ document.ctc_addchat = function (channel, line, noall) {
 
 		document.getElementById('ctc_tabs').appendChild(a);
 		document.ctc_size();
-		if (channel.indexOf('>') == 0) { 
+		if (channel.indexOf('>') == 0) {
 			document.newpm_opened(channel);
 		}
 	}
@@ -370,13 +382,13 @@ document.ctc_addchat = function (channel, line, noall) {
 		// bouncing away when someone's trying to read their scrollback
 		var autoscroll = (dv.scrollTop == dv.scrollHeight - dv.clientHeight) ?
 			true : false;
-		
+
 		document.getElementById('ctc_div').innerHTML += line + br;
 		if (autoscroll)
 		{
 			dv.scrollTop = dv.scrollHeight - dv.clientHeight;
 		}
-		
+
 	}
 	else if(!justfont) {
 		var tab = document.getElementById('ctc_tab_'+channel);
@@ -403,7 +415,7 @@ document.ctc_loop = function () {
 		for (i = 0; i < lines.length; i++) {
 			var channel = 'default';
 			var line = lines[i];
-			var channelreg = /<font color="[#0-9a-z]*">\[([^\]]+)\]</; 
+			var channelreg = /<font color="[#0-9a-z]*">\[([^\]]+)\]</;
 			var channel2reg = /table><tbody><tr><td class="tiny"><center><b>Players in channel ([^:]+):</;
 			if (match = channelreg.exec(line) ) {
 				channel = match[1];
@@ -417,7 +429,7 @@ document.ctc_loop = function () {
 			if ((channel == '' || channel == 'default') && line.indexOf('color="blue"') != -1) {
 				var pmreg = /<font color="blue"><b>private to <a[^>]*><font[^>]*>([^<]+)</;
 				var pmreg2 = /<a[^>]*><font[^>]*>(?:<b>)?([^(]+) \(private\):/;
-			
+
 				if (match3 = pmreg.exec(line)) {
 					channel = '>'+match3[1].replace(/ /g, '_');
 				}
@@ -425,7 +437,7 @@ document.ctc_loop = function () {
 					channel = '>'+match4[1].replace(/ /g, '_');
 				}
 			}
-			
+
 			// More random things
 			if (channel == '' || channel == 'default') {
 				if (line.indexOf('<a href="javascript:restartchat();">Click Here') != -1) {
@@ -441,16 +453,16 @@ document.ctc_loop = function () {
 				}
 				else if(line.indexOf('Currently in channel: ') != -1) {
 					var m  = /Currently in channel: ([^<]*)</.exec(line);
-					if (m && m[1] != '') { 
-						channel = m[1]; 
+					if (m && m[1] != '') {
+						channel = m[1];
 						document.ctc_inchannel = channel;
 						if (document.ctc_getValue('debug')) {document.ctc_addchat('D','<b>INCHANNEL = '+channel+'</b>'); }
 					}
 				}
 				else if(line.indexOf('You are now talking in channel: ') != -1) {
 					var m  = /You are now talking in channel: ([^<]*)\.</.exec(line);
-					if (m && m[1] != '') { 
-						channel = m[1]; 
+					if (m && m[1] != '') {
+						channel = m[1];
 						document.ctc_inchannel = channel;
 						if (document.ctc_getValue('debug')) {document.ctc_addchat('D','<b>INCHANNEL = '+channel+'</b>'); }
 					}
@@ -470,7 +482,7 @@ document.ctc_loop = function () {
 				// to make sure the user wants an MMG tab, then if all of these
 				// are true, tosses it into the MMG tab. Yay MMG tab!
 				else if (line.indexOf('took your') != -1 &&
-					line.indexOf('Meat bet, and you') != -1 && 
+					line.indexOf('Meat bet, and you') != -1 &&
 					line.indexOf('<font color="green"') == 0 &&
 					document.ctc_getValue('mmgtab'))
 				{
@@ -487,13 +499,13 @@ document.ctc_loop = function () {
 				document.ctc_addchat(document.ctc_lasttextchannel,'</font>', true);
 			}
 
-			if(line.indexOf('<font') != -1 && 
+			if(line.indexOf('<font') != -1 &&
 			   (line.indexOf('</font>') == -1 ||
 				line.lastIndexOf('<font') > line.lastIndexOf('</font'))) {
 				line += '</font>';
 			}
 
-			if(line.indexOf('<b>') != -1 && 
+			if(line.indexOf('<b>') != -1 &&
 			   (line.indexOf('</b>') == -1 ||
 				line.lastIndexOf('<b>') > line.lastIndexOf('</b>'))) {
 				line += '</b>';
@@ -533,7 +545,7 @@ unsafeWindow.ctc_inputmunge = function () {
 		//alert(math);
 		if (math[1] && math[2] && math[3] &&
 			math[1] != '' && math[2] != '' && math[3] != '') {
-			var result = 0;	
+			var result = 0;
 			var a = parseFloat(math[1]);
 			var b = parseFloat(math[3]);
 			if (math[2] == '+') { result = a + b; }
@@ -542,11 +554,11 @@ unsafeWindow.ctc_inputmunge = function () {
 			else if (math[2] == '/') { result = a / b; }
 
 			document.ctc_addchat(document.ctc_currentchat, math[0].replace(/^=/,'') + ' = <b>' + result + '</b>');
-			return false;			
-		}			
+			return false;
+		}
 	}
-	if ((txt.indexOf('/') != 0 || txt.indexOf('/me') == 0 || txt.indexOf('/em') == 0 || txt.match('^/[0-9]'))  && document.ctc_currentchat != 'default' 
-			&& document.ctc_currentchat != 'all' 
+	if ((txt.indexOf('/') != 0 || txt.indexOf('/me') == 0 || txt.indexOf('/em') == 0 || txt.match('^/[0-9]'))  && document.ctc_currentchat != 'default'
+			&& document.ctc_currentchat != 'all'
 			&& document.ctc_currentchat != document.ctc_inchannel
 			&& txt != '') {
 		if (document.ctc_currentchat == 'PRIVATE') {
@@ -652,7 +664,7 @@ document.ctc_keys = function (ev) {
 		right = 40;
 	}
 
-	
+
 	if (!ev.ctrlKey || (ev.keyCode != left && ev.keyCode != right)) {
 		return true;
 	}
@@ -719,7 +731,7 @@ var lastUpdated = parseInt(GM_getValue('lastupdate', 0));
 var currentHours = parseInt(new Date().getTime()/3600000);
 
 function GM_get(dest, callback)
-{ 
+{
 	GM_xmlhttpRequest({
 		method: 'GET',
 		url: 'http://' + dest,
@@ -736,8 +748,8 @@ function ver_to_float(str) {return parseFloat(str.replace(/([0-9]*\.)([0-9]*)\.(
 // If over 4 hours, check for updates
 if ((currentHours - lastUpdated) > 4)
 {
-	GM_get("noblesse-oblige.org/cdmoyer/gm/latest.php", function(txt) { 
-		if (ver_to_float(txt) <= ver_to_float(CTC_VERSION)) { 
+	GM_get("noblesse-oblige.org/cdmoyer/gm/latest.php", function(txt) {
+		if (ver_to_float(txt) <= ver_to_float(CTC_VERSION)) {
 			GM_log("Checked... " + txt + " is not newer than " + CTC_VERSION);
 			window.setTimeout(function(){GM_setValue('lastupdate', parseInt(new Date().getTime()/3600000));}, 0);
 			return;
